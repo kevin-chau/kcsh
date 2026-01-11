@@ -67,6 +67,19 @@ void handle_tokens_buffer_allocation_error(char** tokens) {
     }
 }
 
+// lookup token in environment variables
+char * lookup_token_in_env(char *token) {
+    if (token) {
+        // Check if it's an ENV variable
+        if (token[0] == '$') {
+            return getenv(token+1);
+        } else {
+            return token;
+        }
+    }
+    return token;
+}
+
 // Tokenizer
 char **ksh_split_line(char *line) {
     int buffer_size = KSH_TOKEN_BUFFER_SIZE;
@@ -75,7 +88,7 @@ char **ksh_split_line(char *line) {
     char *token;
     handle_tokens_buffer_allocation_error(tokens);
 
-    token = strtok(line, KSH_TOKEN_DELIMITERS);
+    token = lookup_token_in_env(strtok(line, KSH_TOKEN_DELIMITERS));
     while (token) {
         tokens[position] = token;
         position++;
@@ -87,7 +100,7 @@ char **ksh_split_line(char *line) {
         }
 
         // Get the next token
-        token = strtok(NULL, KSH_TOKEN_DELIMITERS);
+        token = lookup_token_in_env(strtok(NULL, KSH_TOKEN_DELIMITERS));
     }
     tokens[position] = NULL;
     return tokens;
