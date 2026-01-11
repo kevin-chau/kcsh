@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <libgen.h>
 
 #define EXIT_SUCCESS 0
 #define KSH_READ_LINE_BUFFER_SIZE 1024
@@ -198,7 +199,7 @@ void ksh_loop(void) {
     do {
         char * cwd_buffer = malloc(1024);
         getcwd(cwd_buffer, 1024);
-        printf("%s ksh$ ", cwd_buffer);
+        printf("\x1b[1;36m%s\x1B[0m ksh$ ", basename(cwd_buffer));
         line = ksh_read_line();
         args = ksh_split_line(line);
         status = ksh_execute(args);
