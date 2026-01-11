@@ -157,7 +157,10 @@ int ksh_exit(char **args) {
 
 int ksh_cd(char **args) {
     if (!args[1]) {
-        fprintf(stderr, "ksh: expected argument to \"cd\"\nDid you forget to specify which directory to change to?\n");
+        // No args, change to home folder
+        if (chdir(getenv("HOME"))) {
+            perror("ksh");
+        }
     } else {
         if (chdir(args[1])) {
             perror("ksh");
@@ -199,7 +202,11 @@ void ksh_loop(void) {
     do {
         char * cwd_buffer = malloc(1024);
         getcwd(cwd_buffer, 1024);
-        printf("\x1b[1;36m%s\x1B[0m ksh$ ", basename(cwd_buffer));
+        if (strcmp(cwd_buffer, getenv("HOME"))) {
+            printf("\x1b[1;36m%s\x1B[0m \x1b[1;31mksh$\x1B[0m ", basename(cwd_buffer));
+        } else {
+            printf("\x1b[1;36m~\x1B[0m \x1b[1;31mksh$\x1B[0m ");
+        }
         line = ksh_read_line();
         args = ksh_split_line(line);
         status = ksh_execute(args);
