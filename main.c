@@ -196,13 +196,16 @@ void ksh_loop(void) {
     int status;
 
     do {
-        printf("ksh$ ");
+        char * cwd_buffer = malloc(1024);
+        getcwd(cwd_buffer, 1024);
+        printf("%s ksh$ ", cwd_buffer);
         line = ksh_read_line();
         args = ksh_split_line(line);
         status = ksh_execute(args);
 
         free(line);
         free(args);
+        free(cwd_buffer);
     } while (status);
 }
 
