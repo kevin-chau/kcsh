@@ -180,11 +180,13 @@ void check_if_git_dir_exists() {
         closedir(dir);
         GIT_DIR_EXISTS = 1;
     } else {
+        // Recursively check parent directories
         GIT_DIR_EXISTS = 0;
     }
 }
 
 int kcsh_cd(char **args) {
+    printf("CHANGING DIR\n");
     if (!args[1]) {
         // No args, change to home folder
         if (chdir(getenv("HOME"))) {
@@ -240,7 +242,10 @@ void kcsh_loop(void) {
         } else {
             printf("~");
         }
-        printf(" \x1b[1;32mkcsh-%s$\x1B[0m ", VERSION);
+        if (GIT_DIR_EXISTS) {
+            printf(" \x1b[1;34mgit:() ");
+        }
+        printf("\x1b[1;32mkcsh-%s$\x1B[0m ", VERSION);
         line = kcsh_read_line();
         args = kcsh_split_line(line);
         status = kcsh_execute(args);
@@ -253,6 +258,9 @@ void kcsh_loop(void) {
 
 int main(int argc, char **argv) {
     // Load config files
+
+    // Initialize
+    check_if_git_dir_exists();
 
     // Interpret in a loop
     kcsh_loop();
