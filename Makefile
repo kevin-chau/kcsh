@@ -3,5 +3,8 @@ default: all
 mkdir:
 	mkdir -p bin
 
-all: mkdir
+all:
 	gcc main.c -o bin/ksh
+
+clean:
+	rm -rf bin
