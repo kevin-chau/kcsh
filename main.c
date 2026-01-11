@@ -3,14 +3,13 @@
 // - Initialize
 // - Interpret
 // - Terminate
-// Follow tutorial https://brennan.io/2015/01/16/write-a-shell-in-c/
+// Follows the tutorial https://brennan.io/2015/01/16/write-a-shell-in-c/
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <unistd.h>
 
 #define EXIT_SUCCESS 0
-#define EXIT_FAILURE 1
 #define KSH_READ_LINE_BUFFER_SIZE 1024
 #define KSH_TOKEN_BUFFER_SIZE 64
 #define KSH_TOKEN_DELIMITERS " \t\r\n\a"
@@ -94,6 +93,99 @@ char **ksh_split_line(char *line) {
 }
 
 
+// Code for launching processes
+int ksh_launch(char **args) {
+    pid_t pid, wpid;
+    int status;
+
+    pid = fork(); // Fork this process
+    if (pid == 0) {
+        if (execvp(args[0], args) == -1) {
+            perror("ksh");
+        }
+        exit(EXIT_FAILURE);
+    } else if (pid < 0) { // error forking
+        perror("ksh");
+    } else { // have this (parent) process wait
+        do {
+            wpid = waitpid(pid, &status, WUNTRACED);
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    }
+
+    return 1;
+}
+
+////////////////////////////////////////////
+// Build in Shell commands
+////////////////////////////////////////////
+int ksh_cd(char **args);
+int ksh_help(char **args);
+int ksh_exit(char **args);
+
+/*
+  List of builtin commands, followed by their corresponding functions.
+ */
+char *builtin_command_strings[] = {
+  "cd",
+  "help",
+  "exit"
+};
+int (*builtin_functions[]) (char **) = {
+  &ksh_cd,
+  &ksh_help,
+  &ksh_exit
+};
+int ksh_num_builtins() {
+    return sizeof(builtin_command_strings) / sizeof(char *);
+}
+
+int ksh_help(char **args) {
+    int i;
+    printf("Kevin Chau's KSH\n");
+    printf("Type a command and hit enter!");
+    printf("The following commands are built in:\n");
+    for (i = 0; i < ksh_num_builtins(); i++) {
+        printf("  %s\n", builtin_command_strings[i]);
+    }
+    return 1;
+}
+
+int ksh_exit(char **args) {
+    return 0;
+}
+
+int ksh_cd(char **args) {
+    if (!args[1]) {
+        fprintf(stderr, "ksh: expected argument to \"cd\"\nDid you forget to specify which directory to change to?\n");
+    } else {
+        if (chdir(args[1])) {
+            perror("ksh");
+        }
+    }
+    return 1;
+}
+
+int ksh_execute(char **args) {
+    int i;
+
+    if (!args[0]) { // empty command
+        return 1;
+    }
+
+    for (i = 0; i < ksh_num_builtins(); i++) {
+        if (!strcmp(args[0], builtin_command_strings[i])) {
+            return (*builtin_functions[i])(args);
+        }
+    }
+
+    return ksh_launch(args);
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Main Loop
+///////////////////////////////////////////////////////////////////////
+
 // Basic loop
 // - Read
 // - Parse
@@ -107,8 +199,7 @@ void ksh_loop(void) {
         printf("ksh$ ");
         line = ksh_read_line();
         args = ksh_split_line(line);
-        // status = ksh_execute(args);
-        status = 1;
+        status = ksh_execute(args);
 
         free(line);
         free(args);
