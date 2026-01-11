@@ -9,11 +9,15 @@
 #include <string.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <dirent.h>
 
 #define EXIT_SUCCESS 0
 #define KSH_READ_LINE_BUFFER_SIZE 1024
 #define KSH_TOKEN_BUFFER_SIZE 64
 #define KSH_TOKEN_DELIMITERS " \t\r\n\a"
+
+// boolean for git dir
+int GIT_DIR_EXISTS = 0;
 
 // Handle buffer allocation error
 void handle_buffer_allocation_error(char * buffer) {
@@ -168,6 +172,17 @@ int ksh_exit(char **args) {
     return 0;
 }
 
+void check_if_git_dir_exists() {
+    DIR* dir = opendir(".git");
+    if (dir) {
+        /* Directory exists. */
+        closedir(dir);
+        GIT_DIR_EXISTS = 1;
+    } else {
+        GIT_DIR_EXISTS = 0;
+    }
+}
+
 int ksh_cd(char **args) {
     if (!args[1]) {
         // No args, change to home folder
@@ -179,6 +194,9 @@ int ksh_cd(char **args) {
             perror("ksh");
         }
     }
+    // check if there is a git directory
+    check_if_git_dir_exists();
+
     return 1;
 }
 
@@ -215,11 +233,13 @@ void ksh_loop(void) {
     do {
         char * cwd_buffer = malloc(1024);
         getcwd(cwd_buffer, 1024);
+        printf("\x1b[1;36m");
         if (strcmp(cwd_buffer, getenv("HOME"))) {
-            printf("\x1b[1;36m%s\x1B[0m \x1b[1;31mksh$\x1B[0m ", basename(cwd_buffer));
+            printf("%s", basename(cwd_buffer));
         } else {
-            printf("\x1b[1;36m~\x1B[0m \x1b[1;31mksh$\x1B[0m ");
+            printf("~");
         }
+        printf(" \x1b[1;31mksh$\x1B[0m ");
         line = ksh_read_line();
         args = ksh_split_line(line);
         status = ksh_execute(args);
