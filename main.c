@@ -1,4 +1,4 @@
-// ksh main.c
+// kcsh main.c
 // Basic lifetime of a shell
 // - Initialize
 // - Interpret
@@ -12,9 +12,10 @@
 #include <dirent.h>
 
 #define EXIT_SUCCESS 0
-#define KSH_READ_LINE_BUFFER_SIZE 1024
-#define KSH_TOKEN_BUFFER_SIZE 64
-#define KSH_TOKEN_DELIMITERS " \t\r\n\a"
+#define KCSH_READ_LINE_BUFFER_SIZE 1024
+#define KCSH_TOKEN_BUFFER_SIZE 64
+#define KCSH_TOKEN_DELIMITERS " \t\r\n\a"
+#define VERSION "0.1"
 
 // boolean for git dir
 int GIT_DIR_EXISTS = 0;
@@ -22,16 +23,16 @@ int GIT_DIR_EXISTS = 0;
 // Handle buffer allocation error
 void handle_buffer_allocation_error(char * buffer) {
     if (!buffer) {
-        fprintf(stderr, "ksh: memory allocation error\n");
+        fprintf(stderr, "kcsh: memory allocation error\n");
         exit(EXIT_FAILURE);
     }
 }
 
 // Reads a line of indeterminate size
 // TODO: reimplement with get line to avoid manual malloc
-char *ksh_read_line(void) {
+char *kcsh_read_line(void) {
     // Setup read buffer and character holder
-    int buffer_size = KSH_READ_LINE_BUFFER_SIZE;
+    int buffer_size = KCSH_READ_LINE_BUFFER_SIZE;
     int position = 0;
     int c; // input character
 
@@ -55,7 +56,7 @@ char *ksh_read_line(void) {
 
         // If we have exceeded the buffer, reallocate.
         if (position >= buffer_size) {
-            buffer_size += KSH_READ_LINE_BUFFER_SIZE;
+            buffer_size += KCSH_READ_LINE_BUFFER_SIZE;
             buffer = realloc(buffer, buffer_size);
             handle_buffer_allocation_error(buffer);
         }
@@ -66,7 +67,7 @@ char *ksh_read_line(void) {
 // handle tokens buffer allocation error
 void handle_tokens_buffer_allocation_error(char** tokens) {
     if (!tokens) {
-        fprintf(stderr, "ksh: memory allocation error\n");
+        fprintf(stderr, "kcsh: memory allocation error\n");
         exit(EXIT_FAILURE);
     }
 }
@@ -85,26 +86,26 @@ char * lookup_token_in_env(char *token) {
 }
 
 // Tokenizer
-char **ksh_split_line(char *line) {
-    int buffer_size = KSH_TOKEN_BUFFER_SIZE;
+char **kcsh_split_line(char *line) {
+    int buffer_size = KCSH_TOKEN_BUFFER_SIZE;
     int position = 0;
     char **tokens = malloc(buffer_size * sizeof(char*));
     char *token;
     handle_tokens_buffer_allocation_error(tokens);
 
-    token = lookup_token_in_env(strtok(line, KSH_TOKEN_DELIMITERS));
+    token = lookup_token_in_env(strtok(line, KCSH_TOKEN_DELIMITERS));
     while (token) {
         tokens[position] = token;
         position++;
 
         if (position >= buffer_size) {
-            buffer_size += KSH_TOKEN_BUFFER_SIZE;
+            buffer_size += KCSH_TOKEN_BUFFER_SIZE;
             tokens = realloc(tokens, buffer_size * sizeof(char*));
             handle_tokens_buffer_allocation_error(tokens);
         }
 
         // Get the next token
-        token = lookup_token_in_env(strtok(NULL, KSH_TOKEN_DELIMITERS));
+        token = lookup_token_in_env(strtok(NULL, KCSH_TOKEN_DELIMITERS));
     }
     tokens[position] = NULL;
     return tokens;
@@ -112,18 +113,18 @@ char **ksh_split_line(char *line) {
 
 
 // Code for launching processes
-int ksh_launch(char **args) {
+int kcsh_launch(char **args) {
     pid_t pid, wpid;
     int status;
 
     pid = fork(); // Fork this process
     if (pid == 0) {
         if (execvp(args[0], args) == -1) {
-            perror("ksh");
+            perror("kcsh");
         }
         exit(EXIT_FAILURE);
     } else if (pid < 0) { // error forking
-        perror("ksh");
+        perror("kcsh");
     } else { // have this (parent) process wait
         do {
             wpid = waitpid(pid, &status, WUNTRACED);
@@ -136,9 +137,9 @@ int ksh_launch(char **args) {
 ////////////////////////////////////////////
 // Build in Shell commands
 ////////////////////////////////////////////
-int ksh_cd(char **args);
-int ksh_help(char **args);
-int ksh_exit(char **args);
+int kcsh_cd(char **args);
+int kcsh_help(char **args);
+int kcsh_exit(char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -149,26 +150,26 @@ char *builtin_command_strings[] = {
   "exit"
 };
 int (*builtin_functions[]) (char **) = {
-  &ksh_cd,
-  &ksh_help,
-  &ksh_exit
+  &kcsh_cd,
+  &kcsh_help,
+  &kcsh_exit
 };
-int ksh_num_builtins() {
+int kcsh_num_builtins() {
     return sizeof(builtin_command_strings) / sizeof(char *);
 }
 
-int ksh_help(char **args) {
+int kcsh_help(char **args) {
     int i;
-    printf("Kevin Chau's KSH\n");
+    printf("Kevin Chau's KCSH\n");
     printf("Type a command and hit enter!");
     printf("The following commands are built in:\n");
-    for (i = 0; i < ksh_num_builtins(); i++) {
+    for (i = 0; i < kcsh_num_builtins(); i++) {
         printf("  %s\n", builtin_command_strings[i]);
     }
     return 1;
 }
 
-int ksh_exit(char **args) {
+int kcsh_exit(char **args) {
     return 0;
 }
 
@@ -183,15 +184,15 @@ void check_if_git_dir_exists() {
     }
 }
 
-int ksh_cd(char **args) {
+int kcsh_cd(char **args) {
     if (!args[1]) {
         // No args, change to home folder
         if (chdir(getenv("HOME"))) {
-            perror("ksh");
+            perror("kcsh");
         }
     } else {
         if (chdir(args[1])) {
-            perror("ksh");
+            perror("kcsh");
         }
     }
     // check if there is a git directory
@@ -200,20 +201,20 @@ int ksh_cd(char **args) {
     return 1;
 }
 
-int ksh_execute(char **args) {
+int kcsh_execute(char **args) {
     int i;
 
     if (!args[0]) { // empty command
         return 1;
     }
 
-    for (i = 0; i < ksh_num_builtins(); i++) {
+    for (i = 0; i < kcsh_num_builtins(); i++) {
         if (!strcmp(args[0], builtin_command_strings[i])) {
             return (*builtin_functions[i])(args);
         }
     }
 
-    return ksh_launch(args);
+    return kcsh_launch(args);
 }
 
 
@@ -225,7 +226,7 @@ int ksh_execute(char **args) {
 // - Read
 // - Parse
 // - Execute
-void ksh_loop(void) {
+void kcsh_loop(void) {
     char *line;
     char **args;
     int status;
@@ -239,10 +240,10 @@ void ksh_loop(void) {
         } else {
             printf("~");
         }
-        printf(" \x1b[1;31mksh$\x1B[0m ");
-        line = ksh_read_line();
-        args = ksh_split_line(line);
-        status = ksh_execute(args);
+        printf(" \x1b[1;32mkcsh-%s$\x1B[0m ", VERSION);
+        line = kcsh_read_line();
+        args = kcsh_split_line(line);
+        status = kcsh_execute(args);
 
         free(line);
         free(args);
@@ -254,7 +255,7 @@ int main(int argc, char **argv) {
     // Load config files
 
     // Interpret in a loop
-    ksh_loop();
+    kcsh_loop();
 
     // Shutdown
     return EXIT_SUCCESS;
