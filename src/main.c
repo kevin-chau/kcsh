@@ -334,6 +334,30 @@ char * get_git_branch(int depth) {
     return branch_name;
 }
 
+// Note: This function returns a pointer to a substring of the original string.
+// If the given string was allocated dynamically, the caller must not overwrite
+// that pointer with the returned value, since the original pointer must be
+// deallocated using the same allocator with which it was allocated.  The return
+// value must NOT be deallocated using free() etc.
+char *trimwhitespace(char *str)
+{
+    char *end;
+
+    // Trim leading space
+    while(isspace((unsigned char)*str)) str++;
+
+    if(*str == 0)  // All spaces?
+        return str;
+
+    // Trim trailing space
+    end = str + strlen(str) - 1;
+    while(end > str && isspace((unsigned char)*end)) end--;
+
+    // Write new null terminator character
+    end[1] = '\0';
+
+    return str;
+}
 
 //////////////////////////////////////////////////////////////////////
 // Main Loop
@@ -369,11 +393,10 @@ void kcsh_loop(void) {
         printf("\x1b[1;32mkcsh-%s$\x1B[0m ", VERSION);
         line = kcsh_read_line();
 
-        // Find first non whic space
-        char * first_non_whitespace = line;
-        while (isspace(*first_non_whitespace)) first_non_whitespace++;
+        // Find first non whitespace
+        char * trimmed_line = trimwhitespace(line);
 
-        args = kcsh_split_line(first_non_whitespace);
+        args = kcsh_split_line(trimmed_line);
 
         // Pressed enter, no command
         if (!strcmp(*args, "")) {
