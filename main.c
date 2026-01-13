@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <dirent.h>
+#include <ctype.h>
 
 #define DEFAULT_BUFFER_SIZE 1024
 #define EXIT_SUCCESS 0
@@ -186,6 +187,7 @@ int kcsh_launch(char **args) {
 int kcsh_cd(char **args);
 int kcsh_help(char **args);
 int kcsh_exit(char **args);
+int kcsh_alias(char **args);
 
 /*
   List of builtin commands, followed by their corresponding functions.
@@ -193,12 +195,14 @@ int kcsh_exit(char **args);
 char *builtin_command_strings[] = {
   "cd",
   "help",
-  "exit"
+  "exit",
+  "alias"
 };
 int (*builtin_functions[]) (char **) = {
   &kcsh_cd,
   &kcsh_help,
-  &kcsh_exit
+  &kcsh_exit,
+  &kcsh_alias
 };
 int kcsh_num_builtins() {
     return sizeof(builtin_command_strings) / sizeof(char *);
@@ -217,6 +221,11 @@ int kcsh_help(char **args) {
 
 int kcsh_exit(char **args) {
     return 0;
+}
+
+int kcsh_alias(char **args) {
+    printf("alias built-in shell command not yet implemented!\n");
+    return 1;
 }
 
 void check_if_git_dir_exists() {
@@ -342,7 +351,12 @@ void kcsh_loop(void) {
 
         printf("\x1b[1;32mkcsh-%s$\x1B[0m ", VERSION);
         line = kcsh_read_line();
-        args = kcsh_split_line(line);
+
+        // Find first non whic space
+        char * first_non_whitespace = line;
+        while (isspace(*first_non_whitespace)) first_non_whitespace++;
+
+        args = kcsh_split_line(first_non_whitespace);
 
         // Pressed enter, no command
         if (!strcmp(*args, "")) {
@@ -359,7 +373,7 @@ void kcsh_loop(void) {
 
 int main(int argc, char **argv) {
     // Load config files
-    system("alias ls='ls -G'");
+    //// TODO: change SHELL environment variable
 
     // Initialize
     check_if_git_dir_exists();
