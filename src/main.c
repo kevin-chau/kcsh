@@ -228,6 +228,7 @@ int kcsh_exit(char **args) {
 
 int kcsh_alias(char **args) {
     printf("alias built-in shell command not yet implemented!\n");
+    // Save the alias so that next time the aliased command is called we use the alias
     return 1;
 }
 
@@ -294,6 +295,8 @@ int kcsh_execute(char **args) {
             return (*builtin_functions[i])(args);
         }
     }
+
+    // Check if the command is aliased
 
     return kcsh_launch(args);
 }

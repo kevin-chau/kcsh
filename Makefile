@@ -4,7 +4,7 @@ mkdir:
 	mkdir -p bin
 
 all:
-	gcc main.c -o bin/kcsh
+	gcc src/main.c -o bin/kcsh
 
 clean:
 	rm -rf bin
