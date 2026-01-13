@@ -11,14 +11,16 @@
 #include <libgen.h>
 #include <dirent.h>
 
+#define DEFAULT_BUFFER_SIZE 1024
 #define EXIT_SUCCESS 0
-#define KCSH_READ_LINE_BUFFER_SIZE 1024
+#define KCSH_READ_LINE_BUFFER_SIZE DEFAULT_BUFFER_SIZE
 #define KCSH_TOKEN_BUFFER_SIZE 64
 #define KCSH_TOKEN_DELIMITERS " \t\r\n\a"
 #define VERSION "0.1"
 
 // boolean for git dir
 int GIT_DIR_EXISTS = 0;
+int cwd_depth_relative_to_git_root = 0;
 
 // Handle buffer allocation error
 void handle_buffer_allocation_error(char * buffer) {
@@ -174,19 +176,35 @@ int kcsh_exit(char **args) {
 }
 
 void check_if_git_dir_exists() {
-    DIR* dir = opendir(".git");
-    if (dir) {
-        /* Directory exists. */
-        closedir(dir);
-        GIT_DIR_EXISTS = 1;
-    } else {
-        // Recursively check parent directories
-        GIT_DIR_EXISTS = 0;
+    // Count directory depth (i.e. number of parent folders)
+    char * cwd_buffer = malloc(2048);
+    getcwd(cwd_buffer, 2048);
+    int i, count;
+    for(i = 0, count = 0; cwd_buffer[i] != '\0'; (cwd_buffer[i] == '/')? count++: 0, i++);
+
+    // Check this directory for a .git folder and all parents recursively
+    DIR* dir;
+    GIT_DIR_EXISTS = 0;
+    for (i = 0; i < count - 1; i++) {
+        dir = opendir(strcat(cwd_buffer, "/.git"));
+        if (dir) {
+            /* Directory exists. */
+            closedir(dir);
+            GIT_DIR_EXISTS = 1;
+            cwd_depth_relative_to_git_root = i;
+            break;
+        }
+        // chop off last folder and try parent folder
+        char *lastslash = strrchr(cwd_buffer, '/');
+        *lastslash = 0; // terminate / truncate the string (remove .git)
+        lastslash = strrchr(cwd_buffer, '/');
+        *lastslash = 0; // terminate / truncate the string (remove current directory)
     }
+
+    free(cwd_buffer);
 }
 
 int kcsh_cd(char **args) {
-    printf("CHANGING DIR\n");
     if (!args[1]) {
         // No args, change to home folder
         if (chdir(getenv("HOME"))) {
@@ -219,6 +237,33 @@ int kcsh_execute(char **args) {
     return kcsh_launch(args);
 }
 
+// Get the name of the current git branch
+char * get_git_branch(int depth) {
+    char * branch_path = malloc(DEFAULT_BUFFER_SIZE);
+    char * git_head_path = malloc(DEFAULT_BUFFER_SIZE);
+    int i;
+    for (i = 0; i < depth; i++) {
+        strcat(git_head_path, "../");
+    }
+    strcat(git_head_path, ".git/HEAD");
+    FILE *fptr;
+
+    fptr = fopen(git_head_path,"r");
+    if (!fptr) {
+        printf("Couldn't open HEAD file!\n");
+    }
+    fgets(branch_path, DEFAULT_BUFFER_SIZE, fptr);
+    char *p = strrchr(branch_path, '/');
+    p[strcspn(p, "\n")] = 0; // remove trailing newline char
+    char *branch_name = malloc(DEFAULT_BUFFER_SIZE);
+    // *branch_name = *(p + 1);
+    strcpy(branch_name, p+1);
+    fclose(fptr);
+    free(git_head_path);
+    free(branch_path);
+    return branch_name;
+}
+
 
 //////////////////////////////////////////////////////////////////////
 // Main Loop
@@ -234,17 +279,23 @@ void kcsh_loop(void) {
     int status;
 
     do {
-        char * cwd_buffer = malloc(1024);
-        getcwd(cwd_buffer, 1024);
+        char * cwd_buffer = malloc(DEFAULT_BUFFER_SIZE);
+        getcwd(cwd_buffer, DEFAULT_BUFFER_SIZE);
         printf("\x1b[1;36m");
         if (strcmp(cwd_buffer, getenv("HOME"))) {
-            printf("%s", basename(cwd_buffer));
+            printf("%s ", basename(cwd_buffer));
         } else {
-            printf("~");
+            printf("~ ");
         }
+
         if (GIT_DIR_EXISTS) {
-            printf(" \x1b[1;34mgit:() ");
+            // Get the name of the branch
+            char * branch_name = get_git_branch(cwd_depth_relative_to_git_root);
+            printf("\x1b[1;34mgit:(\x1b[1;31m%s\x1b[1;34m) ", branch_name);
+            free(branch_name);
         }
+
+
         printf("\x1b[1;32mkcsh-%s$\x1B[0m ", VERSION);
         line = kcsh_read_line();
         args = kcsh_split_line(line);
