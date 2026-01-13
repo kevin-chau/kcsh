@@ -17,6 +17,8 @@
 #define KCSH_TOKEN_BUFFER_SIZE 64
 #define KCSH_TOKEN_DELIMITERS " \t\r\n\a"
 #define VERSION "0.1"
+char acOpen[]  = {"'\"[<{"};
+char acClose[] = {"'\"]>}"};
 
 // boolean for git dir
 int GIT_DIR_EXISTS = 0;
@@ -87,6 +89,48 @@ char * lookup_token_in_env(char *token) {
     return token;
 }
 
+char *strmbtok ( char *input, char *delimit, char *openblock, char *closeblock) {
+    static char *token = NULL;
+    char *lead = NULL;
+    char *block = NULL;
+    int iBlock = 0;
+    int iBlockIndex = 0;
+
+    if ( input != NULL) {
+        token = input;
+        lead = input;
+    }
+    else {
+        lead = token;
+        if ( *token == '\0') {
+            lead = NULL;
+        }
+    }
+
+    while ( *token != '\0') {
+        if ( iBlock) {
+            if ( closeblock[iBlockIndex] == *token) {
+                iBlock = 0;
+            }
+            token++;
+            continue;
+        }
+        if ( ( block = strchr ( openblock, *token)) != NULL) {
+            iBlock = 1;
+            iBlockIndex = block - openblock;
+            token++;
+            continue;
+        }
+        if ( strchr ( delimit, *token) != NULL) {
+            *token = '\0';
+            token++;
+            break;
+        }
+        token++;
+    }
+    return lead;
+}
+
 // Tokenizer
 char **kcsh_split_line(char *line) {
     int buffer_size = KCSH_TOKEN_BUFFER_SIZE;
@@ -95,7 +139,7 @@ char **kcsh_split_line(char *line) {
     char *token;
     handle_tokens_buffer_allocation_error(tokens);
 
-    token = lookup_token_in_env(strtok(line, KCSH_TOKEN_DELIMITERS));
+    token = lookup_token_in_env(strmbtok(line, " ", acOpen, acClose));
     while (token) {
         tokens[position] = token;
         position++;
@@ -107,7 +151,7 @@ char **kcsh_split_line(char *line) {
         }
 
         // Get the next token
-        token = lookup_token_in_env(strtok(NULL, KCSH_TOKEN_DELIMITERS));
+        token = lookup_token_in_env(strmbtok(NULL, " ", acOpen, acClose));
     }
     tokens[position] = NULL;
     return tokens;
@@ -309,6 +353,7 @@ void kcsh_loop(void) {
 
 int main(int argc, char **argv) {
     // Load config files
+    system("alias ls='ls -G'");
 
     // Initialize
     check_if_git_dir_exists();
