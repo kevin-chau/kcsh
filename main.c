@@ -185,6 +185,7 @@ int kcsh_launch(char **args) {
 // Build in Shell commands
 ////////////////////////////////////////////
 int kcsh_cd(char **args);
+int kcsh_chdir(char **args);
 int kcsh_help(char **args);
 int kcsh_exit(char **args);
 int kcsh_alias(char **args);
@@ -194,12 +195,14 @@ int kcsh_alias(char **args);
  */
 char *builtin_command_strings[] = {
   "cd",
+  "chdir",
   "help",
   "exit",
   "alias"
 };
 int (*builtin_functions[]) (char **) = {
   &kcsh_cd,
+  &kcsh_chdir,
   &kcsh_help,
   &kcsh_exit,
   &kcsh_alias
@@ -272,6 +275,11 @@ int kcsh_cd(char **args) {
     check_if_git_dir_exists();
 
     return 1;
+}
+
+// built in chdir is just an alias for cd
+int kcsh_chdir(char **args) {
+    return kcsh_cd(args);
 }
 
 int kcsh_execute(char **args) {
