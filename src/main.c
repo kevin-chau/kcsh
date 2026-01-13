@@ -11,6 +11,7 @@
 #include <libgen.h>
 #include <dirent.h>
 #include <ctype.h>
+#include <search.h>
 
 #define DEFAULT_BUFFER_SIZE 1024
 #define EXIT_SUCCESS 0
@@ -18,6 +19,7 @@
 #define KCSH_TOKEN_BUFFER_SIZE 64
 #define KCSH_TOKEN_DELIMITERS " \t\r\n\a"
 #define VERSION "0.1"
+const size_t ALIAS_DICTIONARY_CAPACITY = 20; // Can store up to 20 aliases
 char acOpen[]  = {"'\"[<{"};
 char acClose[] = {"'\"]>}"};
 
@@ -229,6 +231,10 @@ int kcsh_exit(char **args) {
 int kcsh_alias(char **args) {
     printf("alias built-in shell command not yet implemented!\n");
     // Save the alias so that next time the aliased command is called we use the alias
+    printf("%s\n", *args);
+    
+    ENTRY e;
+    
     return 1;
 }
 
@@ -386,8 +392,10 @@ int main(int argc, char **argv) {
     // Load config files
     //// TODO: change SHELL environment variable
 
-    // Initialize
+    /* Initialize */
     check_if_git_dir_exists();
+    // make a dictionary of aliases
+    hcreate(ALIAS_DICTIONARY_CAPACITY);
 
     // Interpret in a loop
     kcsh_loop();
