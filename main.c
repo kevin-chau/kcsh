@@ -343,6 +343,12 @@ void kcsh_loop(void) {
         printf("\x1b[1;32mkcsh-%s$\x1B[0m ", VERSION);
         line = kcsh_read_line();
         args = kcsh_split_line(line);
+
+        // Pressed enter, no command
+        if (!strcmp(*args, "")) {
+            continue;
+        }
+
         status = kcsh_execute(args);
 
         free(line);
